@@ -88,25 +88,53 @@
  *   //     { status: "rejected", reason: "Item name required!" }]
  */
 export function prepareOrder(item, prepTime) {
-  // Your code here
+  return new Promise((resolve, reject) => {
+    if (!item) return reject(new Error("Item name required!"));
+    if (typeof prepTime !== 'number' || prepTime <= 0) return reject(new Error("Invalid prep time!"));
+    setTimeout(() => {
+      resolve({ item, ready: true, prepTime });
+    }, prepTime);
+  });
 }
 
 export function prepareBatch(items) {
-  // Your code here
+  if (items.length === 0) return Promise.resolve([]);
+  return Promise.all(items.map(i => prepareOrder(i.name, i.prepTime)));
 }
 
 export function getFirstReady(items) {
-  // Your code here
+  if (items.length === 0) return Promise.reject(new Error("No items to prepare!"));
+  return Promise.race(items.map(i => prepareOrder(i.name, i.prepTime)));
 }
 
-export function prepareSafeBatch(items) {
-  // Your code here
+export async function prepareSafeBatch(items) {
+  if (items.length === 0) return [];
+  const results = await Promise.allSettled(items.map(i => prepareOrder(i.name, i.prepTime)));
+  return results.map(r => {
+    if (r.status === "rejected") {
+      return { status: "rejected", reason: r.reason instanceof Error ? r.reason.message : r.reason };
+    }
+    return r;
+  });
 }
 
 export function deliverWithTimeout(orderPromise, timeoutMs) {
-  // Your code here
+  if (typeof timeoutMs !== 'number' || timeoutMs <= 0) return Promise.reject(new Error("Invalid timeout!"));
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Delivery timeout!")), timeoutMs);
+  });
+  return Promise.race([orderPromise, timeoutPromise]);
 }
 
-export function batchWithRetry(items, maxRetries) {
-  // Your code here
+export async function batchWithRetry(items, maxRetries) {
+  if (maxRetries < 0) throw new Error("Invalid maxRetries");
+  let attempts = 0;
+  while (attempts <= maxRetries) {
+    try {
+      return await prepareBatch(items);
+    } catch (e) {
+      if (attempts === maxRetries) throw e;
+      attempts++;
+    }
+  }
 }

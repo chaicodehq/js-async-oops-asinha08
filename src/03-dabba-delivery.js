@@ -76,30 +76,78 @@
  */
 export class DabbaService {
   constructor(serviceName, area) {
-    // Your code here
+    this.serviceName = serviceName;
+    this.area = area;
+    this.customers = [];
+    this._nextId = 1;
   }
 
   addCustomer(name, address, mealPreference) {
-    // Your code here
+    if (!["veg", "nonveg", "jain"].includes(mealPreference)) return null;
+    if (this.customers.some(c => c.name === name)) return null;
+    const customer = {
+      id: this._nextId++,
+      name,
+      address,
+      mealPreference,
+      active: true,
+      delivered: false
+    };
+    this.customers.push(customer);
+    return customer;
   }
 
   removeCustomer(name) {
-    // Your code here
+    const customer = this.customers.find(c => c.name === name);
+    if (customer && customer.active) {
+      customer.active = false;
+      return true;
+    }
+    return false;
   }
 
   createDeliveryBatch() {
-    // Your code here
+    return this.customers
+      .filter(c => {
+        if (c.active) {
+          c.delivered = false;
+          return true;
+        }
+        return false;
+      })
+      .map(c => ({
+        customerId: c.id,
+        name: c.name,
+        address: c.address,
+        mealPreference: c.mealPreference,
+        batchTime: new Date().toISOString()
+      }));
   }
 
   markDelivered(customerId) {
-    // Your code here
+    const customer = this.customers.find(c => c.id === customerId);
+    if (customer && customer.active) {
+      customer.delivered = true;
+      return true;
+    }
+    return false;
   }
 
   getDailyReport() {
-    // Your code here
+    const activeCustomers = this.customers.filter(c => c.active);
+    const report = {
+      totalCustomers: activeCustomers.length,
+      delivered: activeCustomers.filter(c => c.delivered).length,
+      pending: activeCustomers.filter(c => !c.delivered).length,
+      mealBreakdown: { veg: 0, nonveg: 0, jain: 0 }
+    };
+    activeCustomers.forEach(c => {
+      report.mealBreakdown[c.mealPreference]++;
+    });
+    return report;
   }
 
   getCustomer(name) {
-    // Your code here
+    return this.customers.find(c => c.name === name) || null;
   }
 }
